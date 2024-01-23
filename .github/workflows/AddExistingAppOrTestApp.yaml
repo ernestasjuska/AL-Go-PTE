@@ -1,0 +1,86 @@
+name: 'Add existing app or test app'
+
+run-name: "Add existing app or test app in [${{ github.ref_name }}]"
+
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: Project name if the repository is setup for multiple projects
+        required: false
+        default: '.'
+      url:
+        description: Direct Download Url of .app or .zip file
+        required: true
+      directCommit:
+        description: Direct Commit?
+        type: boolean
+        default: false
+      useGhTokenWorkflow:
+        description: Use GhTokenWorkflow for PR/Commit?
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+defaults:
+  run:
+    shell: powershell
+
+env:
+  ALGoOrgSettings: ${{ vars.ALGoOrgSettings }}
+  ALGoRepoSettings: ${{ vars.ALGoRepoSettings }}
+
+jobs:
+  AddExistingAppOrTestApp:
+    needs: [ ]
+    runs-on: [ windows-latest ]
+    steps:
+      - name: Dump Workflow Information
+        uses: ernestasjuska/AL-Go/Actions/DumpWorkflowInfo@bf1e8f35935cb9a2361a40e47b6bf3a2ec0dad9c
+        with:
+          shell: powershell
+
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Initialize the workflow
+        id: init
+        uses: ernestasjuska/AL-Go/Actions/WorkflowInitialize@bf1e8f35935cb9a2361a40e47b6bf3a2ec0dad9c
+        with:
+          shell: powershell
+          eventId: "DO0090"
+
+      - name: Read settings
+        uses: ernestasjuska/AL-Go/Actions/ReadSettings@bf1e8f35935cb9a2361a40e47b6bf3a2ec0dad9c
+        with:
+          shell: powershell
+
+      - name: Read secrets
+        id: ReadSecrets
+        uses: ernestasjuska/AL-Go/Actions/ReadSecrets@bf1e8f35935cb9a2361a40e47b6bf3a2ec0dad9c
+        with:
+          shell: powershell
+          gitHubSecrets: ${{ toJson(secrets) }}
+          getSecrets: 'TokenForPush'
+          useGhTokenWorkflowForPush: '${{ github.event.inputs.useGhTokenWorkflow }}'
+
+      - name: Add existing app
+        uses: ernestasjuska/AL-Go/Actions/AddExistingApp@bf1e8f35935cb9a2361a40e47b6bf3a2ec0dad9c
+        with:
+          shell: powershell
+          token: ${{ steps.ReadSecrets.outputs.TokenForPush }}
+          parentTelemetryScopeJson: ${{ steps.init.outputs.telemetryScopeJson }}
+          project: ${{ github.event.inputs.project }}
+          url: ${{ github.event.inputs.url }}
+          directCommit: ${{ github.event.inputs.directCommit }}
+
+      - name: Finalize the workflow
+        if: always()
+        uses: ernestasjuska/AL-Go/Actions/WorkflowPostProcess@bf1e8f35935cb9a2361a40e47b6bf3a2ec0dad9c
+        with:
+          shell: powershell
+          eventId: "DO0090"
+          telemetryScopeJson: ${{ steps.init.outputs.telemetryScopeJson }}
